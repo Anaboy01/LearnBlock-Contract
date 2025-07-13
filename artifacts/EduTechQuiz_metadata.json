@@ -1,18 +1,12 @@
 {
 	"compiler": {
-		"version": "0.8.25+commit.b61c2a91"
+		"version": "0.8.30+commit.73712a01"
 	},
 	"language": "Solidity",
 	"output": {
 		"abi": [
 			{
-				"inputs": [
-					{
-						"internalType": "address",
-						"name": "_token",
-						"type": "address"
-					}
-				],
+				"inputs": [],
 				"stateMutability": "nonpayable",
 				"type": "constructor"
 			},
@@ -30,12 +24,6 @@
 						"internalType": "string",
 						"name": "title",
 						"type": "string"
-					},
-					{
-						"indexed": false,
-						"internalType": "uint256",
-						"name": "tokenReward",
-						"type": "uint256"
 					}
 				],
 				"name": "ContentRegistered",
@@ -74,15 +62,28 @@
 						"internalType": "uint256",
 						"name": "contentId",
 						"type": "uint256"
+					}
+				],
+				"name": "RewardClaimed",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "user",
+						"type": "address"
 					},
 					{
 						"indexed": false,
 						"internalType": "uint256",
-						"name": "amount",
+						"name": "userId",
 						"type": "uint256"
 					}
 				],
-				"name": "RewardClaimed",
+				"name": "UserRegistered",
 				"type": "event"
 			},
 			{
@@ -185,14 +186,47 @@
 						"type": "string"
 					},
 					{
-						"internalType": "uint256",
-						"name": "tokenReward",
-						"type": "uint256"
-					},
-					{
 						"internalType": "bool",
 						"name": "exists",
 						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "user",
+						"type": "address"
+					}
+				],
+				"name": "getQuizzesCompleted",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "user",
+						"type": "address"
+					}
+				],
+				"name": "getUserId",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
 					}
 				],
 				"stateMutability": "view",
@@ -217,6 +251,48 @@
 				"type": "function"
 			},
 			{
+				"inputs": [],
+				"name": "nextUserId",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"name": "profiles",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "userId",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "quizzesCompleted",
+						"type": "uint256"
+					},
+					{
+						"internalType": "bool",
+						"name": "registered",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
 				"inputs": [
 					{
 						"internalType": "uint256",
@@ -227,11 +303,6 @@
 						"internalType": "string",
 						"name": "title",
 						"type": "string"
-					},
-					{
-						"internalType": "uint256",
-						"name": "rewardAmount",
-						"type": "uint256"
 					}
 				],
 				"name": "registerContent",
@@ -240,16 +311,16 @@
 				"type": "function"
 			},
 			{
-				"inputs": [],
-				"name": "rewardToken",
-				"outputs": [
+				"inputs": [
 					{
-						"internalType": "contract IERC20",
-						"name": "",
+						"internalType": "address",
+						"name": "user",
 						"type": "address"
 					}
 				],
-				"stateMutability": "view",
+				"name": "registerUser",
+				"outputs": [],
+				"stateMutability": "nonpayable",
 				"type": "function"
 			}
 		],
@@ -268,7 +339,7 @@
 		"compilationTarget": {
 			"contracts/LearnBlock.sol": "EduTechQuiz"
 		},
-		"evmVersion": "cancun",
+		"evmVersion": "prague",
 		"libraries": {},
 		"metadata": {
 			"bytecodeHash": "ipfs"
@@ -281,11 +352,11 @@
 	},
 	"sources": {
 		"contracts/LearnBlock.sol": {
-			"keccak256": "0xaeaead9368f67d777511f5023084d99b4d3e25c9f3c998657218d975eac92309",
+			"keccak256": "0x9aec03422559cc4b8d264b946ecbca45a574e33b91999b28921184a3119dede8",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://edd211eda261ea5af479db47c293b7cffd79ab2f7090560d66c26a34a5d503f4",
-				"dweb:/ipfs/QmU2XGy21u68J2ZK77dg8Pvw7nLePebk72QLeAMQJjf1dt"
+				"bzz-raw://1467a8f37a099fc1dbfd2d2730ad88b1b8224d599af57a068548462159e5d8d6",
+				"dweb:/ipfs/QmVdhWUQvKuXffQa6923sqiU9Rur3mLBvfwvVRyTD1YZ6T"
 			]
 		}
 	},

@@ -1,17 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-interface IERC20 {
-    function transfer(address recipient, uint256 amount) external returns (bool);
-}
-
 contract EduTechQuiz {
     address public admin;
-    IERC20 public rewardToken;
 
     struct Content {
         string title;
-        uint256 tokenReward;
         bool exists;
     }
 
@@ -20,65 +14,91 @@ contract EduTechQuiz {
         bool claimed;
     }
 
+    struct UserProfile {
+        uint256 userId;
+        uint256 quizzesCompleted;
+        bool registered;
+    }
 
     mapping(uint256 => Content) public contents;
-
-   
+    mapping(address => UserProfile) public profiles;
     mapping(address => mapping(uint256 => Completion)) public completions;
 
-    event ContentRegistered(uint256 contentId, string title, uint256 tokenReward);
+    uint256 public nextUserId = 1;
+
+    event ContentRegistered(uint256 contentId, string title);
+    event UserRegistered(address indexed user, uint256 userId);
     event QuizVerified(address indexed user, uint256 contentId);
-    event RewardClaimed(address indexed user, uint256 contentId, uint256 amount);
+    event RewardClaimed(address indexed user, uint256 contentId);
 
     modifier onlyAdmin() {
         require(msg.sender == admin, "Only admin");
         _;
     }
 
-    constructor(address _token) {
+    constructor() {
         admin = msg.sender;
-        rewardToken = IERC20(_token);
     }
 
-    function registerContent(uint256 contentId, string memory title, uint256 rewardAmount) external onlyAdmin {
-        require(!contents[contentId].exists, "Already exists");
+    function registerContent(uint256 contentId, string memory title) external onlyAdmin {
+        require(!contents[contentId].exists, "Content already exists");
 
         contents[contentId] = Content({
             title: title,
-            tokenReward: rewardAmount,
             exists: true
         });
 
-        emit ContentRegistered(contentId, title, rewardAmount);
+        emit ContentRegistered(contentId, title);
     }
 
-    // Called by backend when user passes the quiz
+    function registerUser(address user) external onlyAdmin {
+        require(!profiles[user].registered, "User already registered");
+
+        profiles[user] = UserProfile({
+            userId: nextUserId,
+            quizzesCompleted: 0,
+            registered: true
+        });
+
+        emit UserRegistered(user, nextUserId);
+        nextUserId++;
+    }
+
     function markEligible(address user, uint256 contentId) external onlyAdmin {
         require(contents[contentId].exists, "Content not found");
-        require(!completions[user][contentId].eligible, "Already marked");
+        require(profiles[user].registered, "User not registered");
+        require(!completions[user][contentId].eligible, "Already marked eligible");
 
         completions[user][contentId].eligible = true;
 
         emit QuizVerified(user, contentId);
     }
 
-    // Called by user from frontend
     function claimReward(uint256 contentId) external {
-        Completion storage completion = completions[msg.sender][contentId];
-        Content memory content = contents[contentId];
+        require(profiles[msg.sender].registered, "Not registered");
 
-        require(content.exists, "Invalid content");
+        Completion storage completion = completions[msg.sender][contentId];
+        require(contents[contentId].exists, "Invalid content");
         require(completion.eligible, "Not eligible");
         require(!completion.claimed, "Already claimed");
 
         completion.claimed = true;
-        rewardToken.transfer(msg.sender, content.tokenReward);
+        profiles[msg.sender].quizzesCompleted++;
 
-        emit RewardClaimed(msg.sender, contentId, content.tokenReward);
+        emit RewardClaimed(msg.sender, contentId);
     }
 
     function checkEligibility(address user, uint256 contentId) external view returns (bool eligible, bool claimed) {
         Completion memory c = completions[user][contentId];
         return (c.eligible, c.claimed);
+    }
+
+    function getUserId(address user) external view returns (uint256) {
+        require(profiles[user].registered, "User not registered");
+        return profiles[user].userId;
+    }
+
+    function getQuizzesCompleted(address user) external view returns (uint256) {
+        return profiles[user].quizzesCompleted;
     }
 }
