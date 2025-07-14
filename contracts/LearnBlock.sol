@@ -1,104 +1,197 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-contract EduTechQuiz {
-    address public admin;
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+
+contract EduTechQuiz is ERC721Enumerable {
+    uint256 public nextContentId;
+    uint256 public nextUserId;
+    uint256 public nextBadgeId;
+
+    address[] public trustees;
+    mapping(address => bool) public isTrustee;
 
     struct Content {
         string title;
+        string body;
+        string[] sources;
+        string[] quizQuestions;
+        uint256 pointReward;
         bool exists;
-    }
-
-    struct Completion {
-        bool eligible;
-        bool claimed;
     }
 
     struct UserProfile {
         uint256 userId;
-        uint256 quizzesCompleted;
-        bool registered;
+        uint256 articlesRead;
+        uint256 quizzesTaken;
+        uint256 points;
+        uint256 badges;
+        bool goldenBadgeClaimed;
     }
 
     mapping(uint256 => Content) public contents;
     mapping(address => UserProfile) public profiles;
-    mapping(address => mapping(uint256 => Completion)) public completions;
+    mapping(address => mapping(uint256 => bool)) public hasCompleted;
 
-    uint256 public nextUserId = 1;
+    event ContentRegistered(uint256 indexed contentId);
+    event ArticleRead(address indexed user, uint256 indexed contentId);
+    event QuizTaken(address indexed user, uint256 indexed contentId, uint256 points);
+    event BadgeMinted(address indexed user, uint256 badgeId, bool isGolden);
+    event XFIRewardClaimed(address indexed user, uint256 amount);
 
-    event ContentRegistered(uint256 contentId, string title);
-    event UserRegistered(address indexed user, uint256 userId);
-    event QuizVerified(address indexed user, uint256 contentId);
-    event RewardClaimed(address indexed user, uint256 contentId);
-
-    modifier onlyAdmin() {
-        require(msg.sender == admin, "Only admin");
+    modifier onlyTrustee() {
+        require(isTrustee[msg.sender], "Not authorized");
         _;
     }
 
-    constructor() {
-        admin = msg.sender;
+    constructor(address[] memory _trustees) ERC721("EduTechBadge", "ETB") {
+        require(_trustees.length > 0, "At least one trustee required");
+        for (uint256 i = 0; i < _trustees.length; i++) {
+            address trustee = _trustees[i];
+            require(trustee != address(0), "Invalid trustee");
+            require(!isTrustee[trustee], "Duplicate trustee");
+            isTrustee[trustee] = true;
+            trustees.push(trustee);
+        }
+        nextContentId = 1;
+        nextUserId = 1;
+        nextBadgeId = 1;
     }
 
-    function registerContent(uint256 contentId, string memory title) external onlyAdmin {
-        require(!contents[contentId].exists, "Content already exists");
 
-        contents[contentId] = Content({
-            title: title,
-            exists: true
-        });
+    receive() external payable {}
 
-        emit ContentRegistered(contentId, title);
+    /* ========== CONTENT OPERATIONS ========== */
+
+    function registerContent(
+        string memory title,
+        string memory body,
+        string[] memory sources,
+        string[] memory quizQuestions,
+        uint256 pointReward
+    ) external onlyTrustee {
+        uint256 cid = nextContentId;
+        Content storage c = contents[cid];
+        c.title = title;
+        c.body = body;
+        c.sources = sources;
+        c.quizQuestions = quizQuestions;
+        c.pointReward = pointReward;
+        c.exists = true;
+
+        emit ContentRegistered(cid);
+        nextContentId++;
     }
 
-    function registerUser(address user) external onlyAdmin {
-        require(!profiles[user].registered, "User already registered");
 
-        profiles[user] = UserProfile({
-            userId: nextUserId,
-            quizzesCompleted: 0,
-            registered: true
-        });
 
-        emit UserRegistered(user, nextUserId);
-        nextUserId++;
+    function _ensureRegistered(address user) internal {
+        if (profiles[user].userId == 0) {
+            profiles[user].userId = nextUserId;
+            nextUserId++;
+        }
     }
 
-    function markEligible(address user, uint256 contentId) external onlyAdmin {
+    function readArticle(uint256 contentId) external {
         require(contents[contentId].exists, "Content not found");
-        require(profiles[user].registered, "User not registered");
-        require(!completions[user][contentId].eligible, "Already marked eligible");
-
-        completions[user][contentId].eligible = true;
-
-        emit QuizVerified(user, contentId);
+        _ensureRegistered(msg.sender);
+        UserProfile storage u = profiles[msg.sender];
+        u.articlesRead++;
+        emit ArticleRead(msg.sender, contentId);
     }
 
-    function claimReward(uint256 contentId) external {
-        require(profiles[msg.sender].registered, "Not registered");
+    function takeQuiz(uint256 contentId) external {
+        require(contents[contentId].exists, "Content not found");
+        _ensureRegistered(msg.sender);
+        require(!hasCompleted[msg.sender][contentId], "Already completed");
 
-        Completion storage completion = completions[msg.sender][contentId];
-        require(contents[contentId].exists, "Invalid content");
-        require(completion.eligible, "Not eligible");
-        require(!completion.claimed, "Already claimed");
+        UserProfile storage u = profiles[msg.sender];
+        Content storage c = contents[contentId];
 
-        completion.claimed = true;
-        profiles[msg.sender].quizzesCompleted++;
+        u.quizzesTaken++;
+        u.points += c.pointReward;
+        hasCompleted[msg.sender][contentId] = true;
+        emit QuizTaken(msg.sender, contentId, c.pointReward);
 
-        emit RewardClaimed(msg.sender, contentId);
+        _checkBadgeMint(msg.sender);
     }
 
-    function checkEligibility(address user, uint256 contentId) external view returns (bool eligible, bool claimed) {
-        Completion memory c = completions[user][contentId];
-        return (c.eligible, c.claimed);
+/* ========== BADGE OPERATIONS ========== */
+
+    function _checkBadgeMint(address user) internal {
+        UserProfile storage u = profiles[user];
+        uint256 totalBadgesEarned = u.points / 500;
+        while (u.badges < totalBadgesEarned) {
+            bool isGolden = false;
+            u.badges++;
+            if (u.badges == 5 && !u.goldenBadgeClaimed) {
+                isGolden = true;
+                u.goldenBadgeClaimed = true;
+            }
+
+            uint256 badgeId = nextBadgeId;
+            nextBadgeId++;
+            _safeMint(user, badgeId);
+            emit BadgeMinted(user, badgeId, isGolden);
+        }
     }
 
-    function getUserId(address user) external view returns (uint256) {
-        require(profiles[user].registered, "User not registered");
-        return profiles[user].userId;
+    /* ========== REWARD CLAIM ========== */
+
+    function claimXFIReward() external {
+        UserProfile storage u = profiles[msg.sender];
+        require(u.points > 0, "No points to convert");
+
+        uint256 reward = u.points * 1e17; // 0.1 XFI per point
+        require(address(this).balance >= reward, "Insufficient contract balance");
+
+        u.points = 0; // Reset points after claiming
+
+        (bool sent, ) = payable(msg.sender).call{value: reward}("");
+        require(sent, "Failed to send XFI");
+
+        emit XFIRewardClaimed(msg.sender, reward);
     }
 
-    function getQuizzesCompleted(address user) external view returns (uint256) {
-        return profiles[user].quizzesCompleted;
+    /* ========== VIEW FUNCTIONS ========== */
+
+    function getContent(uint256 contentId)
+        external
+        view
+        returns (
+            string memory title,
+            string memory body,
+            string[] memory sources,
+            string[] memory quizQuestions,
+            uint256 pointReward
+        )
+    {
+        Content storage c = contents[contentId];
+        require(c.exists, "Content not found");
+        return (c.title, c.body, c.sources, c.quizQuestions, c.pointReward);
+    }
+
+    function getUserProfile(address user)
+        external
+        view
+        returns (
+            uint256 userId,
+            uint256 articlesRead,
+            uint256 quizzesTaken,
+            uint256 points,
+            uint256 badges,
+            bool goldenBadgeClaimed
+        )
+    {
+        UserProfile storage u = profiles[user];
+        require(u.userId != 0, "User not registered");
+        return (
+            u.userId,
+            u.articlesRead,
+            u.quizzesTaken,
+            u.points,
+            u.badges,
+            u.goldenBadgeClaimed
+        );
     }
 }
