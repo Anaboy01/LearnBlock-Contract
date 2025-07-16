@@ -24,7 +24,8 @@ contract EduTechQuiz is ERC721Enumerable {
         uint256 userId;
         uint256 articlesRead;
         uint256 quizzesTaken;
-        uint256 points;
+        uint256 totalPointsEarned;
+        uint256 totalPointsRedeemed;
         uint256 badges;
         bool goldenBadgeClaimed;
     }
@@ -58,7 +59,6 @@ contract EduTechQuiz is ERC721Enumerable {
         nextBadgeId = 1;
     }
 
-
     receive() external payable {}
 
     /* ========== CONTENT OPERATIONS ========== */
@@ -83,7 +83,7 @@ contract EduTechQuiz is ERC721Enumerable {
         nextContentId++;
     }
 
-
+    /* ========== USER OPERATIONS ========== */
 
     function _ensureRegistered(address user) internal {
         if (profiles[user].userId == 0) {
@@ -109,21 +109,23 @@ contract EduTechQuiz is ERC721Enumerable {
         Content storage c = contents[contentId];
 
         u.quizzesTaken++;
-        u.points += c.pointReward;
+        u.totalPointsEarned += c.pointReward;
         hasCompleted[msg.sender][contentId] = true;
-        emit QuizTaken(msg.sender, contentId, c.pointReward);
 
+        emit QuizTaken(msg.sender, contentId, c.pointReward);
         _checkBadgeMint(msg.sender);
     }
 
-/* ========== BADGE OPERATIONS ========== */
+    /* ========== BADGE OPERATIONS ========== */
 
     function _checkBadgeMint(address user) internal {
         UserProfile storage u = profiles[user];
-        uint256 totalBadgesEarned = u.points / 500;
+        uint256 totalBadgesEarned = u.totalPointsEarned / 500;
+
         while (u.badges < totalBadgesEarned) {
             bool isGolden = false;
             u.badges++;
+
             if (u.badges == 5 && !u.goldenBadgeClaimed) {
                 isGolden = true;
                 u.goldenBadgeClaimed = true;
@@ -132,6 +134,7 @@ contract EduTechQuiz is ERC721Enumerable {
             uint256 badgeId = nextBadgeId;
             nextBadgeId++;
             _safeMint(user, badgeId);
+
             emit BadgeMinted(user, badgeId, isGolden);
         }
     }
@@ -140,12 +143,14 @@ contract EduTechQuiz is ERC721Enumerable {
 
     function claimXFIReward() external {
         UserProfile storage u = profiles[msg.sender];
-        require(u.points > 0, "No points to convert");
 
-        uint256 reward = u.points * 1e17; // 0.1 XFI per point
+        uint256 unredeemedPoints = u.totalPointsEarned - u.totalPointsRedeemed;
+        require(unredeemedPoints > 0, "No points to redeem");
+
+        uint256 reward = unredeemedPoints * 1e17; // 0.1 XFI per point
         require(address(this).balance >= reward, "Insufficient contract balance");
 
-        u.points = 0; // Reset points after claiming
+        u.totalPointsRedeemed += unredeemedPoints;
 
         (bool sent, ) = payable(msg.sender).call{value: reward}("");
         require(sent, "Failed to send XFI");
@@ -178,7 +183,9 @@ contract EduTechQuiz is ERC721Enumerable {
             uint256 userId,
             uint256 articlesRead,
             uint256 quizzesTaken,
-            uint256 points,
+            uint256 totalPointsEarned,
+            uint256 totalPointsRedeemed,
+            uint256 unredeemedPoints,
             uint256 badges,
             bool goldenBadgeClaimed
         )
@@ -189,9 +196,51 @@ contract EduTechQuiz is ERC721Enumerable {
             u.userId,
             u.articlesRead,
             u.quizzesTaken,
-            u.points,
+            u.totalPointsEarned,
+            u.totalPointsRedeemed,
+            u.totalPointsEarned - u.totalPointsRedeemed,
             u.badges,
             u.goldenBadgeClaimed
         );
     }
+
+    function getAllContentIds() external view returns (uint256[] memory) {
+    uint256[] memory ids = new uint256[](nextContentId - 1);
+    for (uint256 i = 1; i < nextContentId; i++) {
+        ids[i - 1] = i;
+    }
+    return ids;
+}
+
+function getUserCompletedContent(address user) external view returns (bool[] memory) {
+    uint256 total = nextContentId - 1;
+    bool[] memory completed = new bool[](total);
+    for (uint256 i = 1; i <= total; i++) {
+        completed[i - 1] = hasCompleted[user][i];
+    }
+    return completed;
+}
+
+function getUnredeemedPoints(address user) external view returns (uint256) {
+    UserProfile storage u = profiles[user];
+    return u.totalPointsEarned - u.totalPointsRedeemed;
+}
+
+function getUserBadgeIds(address user) external view returns (uint256[] memory) {
+    uint256 balance = balanceOf(user);
+    uint256[] memory ids = new uint256[](balance);
+    for (uint256 i = 0; i < balance; i++) {
+        ids[i] = tokenOfOwnerByIndex(user, i);
+    }
+    return ids;
+}
+
+function isUserRegistered(address user) external view returns (bool) {
+    return profiles[user].userId != 0;
+}
+
+function getTrustees() external view returns (address[] memory) {
+    return trustees;
+}
+
 }
