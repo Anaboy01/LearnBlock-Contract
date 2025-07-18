@@ -319,6 +319,34 @@
 			{
 				"inputs": [
 					{
+						"internalType": "uint256",
+						"name": "contentId",
+						"type": "uint256"
+					},
+					{
+						"internalType": "string",
+						"name": "question",
+						"type": "string"
+					},
+					{
+						"internalType": "string[]",
+						"name": "options",
+						"type": "string[]"
+					},
+					{
+						"internalType": "uint256",
+						"name": "correctAnswerIndex",
+						"type": "uint256"
+					}
+				],
+				"name": "addQuizQuestion",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
 						"internalType": "address",
 						"name": "to",
 						"type": "address"
@@ -395,6 +423,19 @@
 				"type": "function"
 			},
 			{
+				"inputs": [],
+				"name": "getAllContentIds",
+				"outputs": [
+					{
+						"internalType": "uint256[]",
+						"name": "",
+						"type": "uint256[]"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
 				"inputs": [
 					{
 						"internalType": "uint256",
@@ -439,14 +480,108 @@
 						"type": "string[]"
 					},
 					{
-						"internalType": "string[]",
-						"name": "quizQuestions",
-						"type": "string[]"
-					},
-					{
 						"internalType": "uint256",
 						"name": "pointReward",
 						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "contentId",
+						"type": "uint256"
+					}
+				],
+				"name": "getQuizQuestions",
+				"outputs": [
+					{
+						"internalType": "string[]",
+						"name": "questions",
+						"type": "string[]"
+					},
+					{
+						"internalType": "string[][]",
+						"name": "options",
+						"type": "string[][]"
+					},
+					{
+						"internalType": "uint256[]",
+						"name": "correctIndexes",
+						"type": "uint256[]"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "getTrustees",
+				"outputs": [
+					{
+						"internalType": "address[]",
+						"name": "",
+						"type": "address[]"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "user",
+						"type": "address"
+					}
+				],
+				"name": "getUnredeemedPoints",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "user",
+						"type": "address"
+					}
+				],
+				"name": "getUserBadgeIds",
+				"outputs": [
+					{
+						"internalType": "uint256[]",
+						"name": "",
+						"type": "uint256[]"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "user",
+						"type": "address"
+					}
+				],
+				"name": "getUserCompletedContent",
+				"outputs": [
+					{
+						"internalType": "bool[]",
+						"name": "",
+						"type": "bool[]"
 					}
 				],
 				"stateMutability": "view",
@@ -479,7 +614,17 @@
 					},
 					{
 						"internalType": "uint256",
-						"name": "points",
+						"name": "totalPointsEarned",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "totalPointsRedeemed",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "unredeemedPoints",
 						"type": "uint256"
 					},
 					{
@@ -553,6 +698,25 @@
 					}
 				],
 				"name": "isTrustee",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "user",
+						"type": "address"
+					}
+				],
+				"name": "isUserRegistered",
 				"outputs": [
 					{
 						"internalType": "bool",
@@ -661,7 +825,12 @@
 					},
 					{
 						"internalType": "uint256",
-						"name": "points",
+						"name": "totalPointsEarned",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "totalPointsRedeemed",
 						"type": "uint256"
 					},
 					{
@@ -706,11 +875,6 @@
 					{
 						"internalType": "string[]",
 						"name": "sources",
-						"type": "string[]"
-					},
-					{
-						"internalType": "string[]",
-						"name": "quizQuestions",
 						"type": "string[]"
 					},
 					{
@@ -1255,11 +1419,11 @@
 			]
 		},
 		"contracts/LearnBlock.sol": {
-			"keccak256": "0xc31d2af08130886d64b3a431ad096e80d24cdff4b8b1568bc56a14229ac866df",
+			"keccak256": "0x91d373bef60e9a8f62378a0fa4a9a609d98b269fd5b68b1d612a16badc85855c",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://b1ca0970531957f8f8f12d220bb60b07f68b17b52785981180768d80389a8b81",
-				"dweb:/ipfs/QmeeJ2fy98oFrX1SzrHwEpHgsCk6rUzkhLGZYM4dy97wv3"
+				"bzz-raw://0fee410228c2af3d16639852207784e52a47e288e1e49fc93bfbb03061b10ba7",
+				"dweb:/ipfs/QmQfrE9F3CjMKtxEVqdgeA9WLAtimPAB2zyP22RXW17Ph7"
 			]
 		}
 	},

@@ -11,11 +11,17 @@ contract EduTechQuiz is ERC721Enumerable {
     address[] public trustees;
     mapping(address => bool) public isTrustee;
 
+    struct QuizQuestion {
+        string question;
+        string[] options;
+        uint256 correctAnswerIndex;
+    }
+
     struct Content {
         string title;
         string body;
         string[] sources;
-        string[] quizQuestions;
+        QuizQuestion[] quizQuestions;
         uint256 pointReward;
         bool exists;
     }
@@ -67,7 +73,6 @@ contract EduTechQuiz is ERC721Enumerable {
         string memory title,
         string memory body,
         string[] memory sources,
-        string[] memory quizQuestions,
         uint256 pointReward
     ) external onlyTrustee {
         uint256 cid = nextContentId;
@@ -75,12 +80,27 @@ contract EduTechQuiz is ERC721Enumerable {
         c.title = title;
         c.body = body;
         c.sources = sources;
-        c.quizQuestions = quizQuestions;
         c.pointReward = pointReward;
         c.exists = true;
 
         emit ContentRegistered(cid);
         nextContentId++;
+    }
+
+    function addQuizQuestion(
+        uint256 contentId,
+        string memory question,
+        string[] memory options,
+        uint256 correctAnswerIndex
+    ) external onlyTrustee {
+        require(contents[contentId].exists, "Content not found");
+        require(correctAnswerIndex < options.length, "Invalid answer index");
+
+        contents[contentId].quizQuestions.push(QuizQuestion({
+            question: question,
+            options: options,
+            correctAnswerIndex: correctAnswerIndex
+        }));
     }
 
     /* ========== USER OPERATIONS ========== */
@@ -167,13 +187,37 @@ contract EduTechQuiz is ERC721Enumerable {
             string memory title,
             string memory body,
             string[] memory sources,
-            string[] memory quizQuestions,
             uint256 pointReward
         )
     {
         Content storage c = contents[contentId];
         require(c.exists, "Content not found");
-        return (c.title, c.body, c.sources, c.quizQuestions, c.pointReward);
+        return (c.title, c.body, c.sources, c.pointReward);
+    }
+
+    function getQuizQuestions(uint256 contentId)
+        external
+        view
+        returns (
+            string[] memory questions,
+            string[][] memory options,
+            uint256[] memory correctIndexes
+        )
+    {
+        Content storage c = contents[contentId];
+        require(c.exists, "Content not found");
+
+        uint256 len = c.quizQuestions.length;
+        questions = new string[](len);
+        options = new string[][](len);
+        correctIndexes = new uint256[](len);
+
+        for (uint256 i = 0; i < len; i++) {
+            QuizQuestion storage q = c.quizQuestions[i];
+            questions[i] = q.question;
+            options[i] = q.options;
+            correctIndexes[i] = q.correctAnswerIndex;
+        }
     }
 
     function getUserProfile(address user)
@@ -205,42 +249,41 @@ contract EduTechQuiz is ERC721Enumerable {
     }
 
     function getAllContentIds() external view returns (uint256[] memory) {
-    uint256[] memory ids = new uint256[](nextContentId - 1);
-    for (uint256 i = 1; i < nextContentId; i++) {
-        ids[i - 1] = i;
+        uint256[] memory ids = new uint256[](nextContentId - 1);
+        for (uint256 i = 1; i < nextContentId; i++) {
+            ids[i - 1] = i;
+        }
+        return ids;
     }
-    return ids;
-}
 
-function getUserCompletedContent(address user) external view returns (bool[] memory) {
-    uint256 total = nextContentId - 1;
-    bool[] memory completed = new bool[](total);
-    for (uint256 i = 1; i <= total; i++) {
-        completed[i - 1] = hasCompleted[user][i];
+    function getUserCompletedContent(address user) external view returns (bool[] memory) {
+        uint256 total = nextContentId - 1;
+        bool[] memory completed = new bool[](total);
+        for (uint256 i = 1; i <= total; i++) {
+            completed[i - 1] = hasCompleted[user][i];
+        }
+        return completed;
     }
-    return completed;
-}
 
-function getUnredeemedPoints(address user) external view returns (uint256) {
-    UserProfile storage u = profiles[user];
-    return u.totalPointsEarned - u.totalPointsRedeemed;
-}
-
-function getUserBadgeIds(address user) external view returns (uint256[] memory) {
-    uint256 balance = balanceOf(user);
-    uint256[] memory ids = new uint256[](balance);
-    for (uint256 i = 0; i < balance; i++) {
-        ids[i] = tokenOfOwnerByIndex(user, i);
+    function getUnredeemedPoints(address user) external view returns (uint256) {
+        UserProfile storage u = profiles[user];
+        return u.totalPointsEarned - u.totalPointsRedeemed;
     }
-    return ids;
-}
 
-function isUserRegistered(address user) external view returns (bool) {
-    return profiles[user].userId != 0;
-}
+    function getUserBadgeIds(address user) external view returns (uint256[] memory) {
+        uint256 balance = balanceOf(user);
+        uint256[] memory ids = new uint256[](balance);
+        for (uint256 i = 0; i < balance; i++) {
+            ids[i] = tokenOfOwnerByIndex(user, i);
+        }
+        return ids;
+    }
 
-function getTrustees() external view returns (address[] memory) {
-    return trustees;
-}
+    function isUserRegistered(address user) external view returns (bool) {
+        return profiles[user].userId != 0;
+    }
 
+    function getTrustees() external view returns (address[] memory) {
+        return trustees;
+    }
 }
